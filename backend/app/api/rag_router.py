@@ -1,11 +1,14 @@
 from fastapi import APIRouter, HTTPException
 
 from app.schemas.rag_schema import (
+    RagChatRequest,
+    RagChatResponse,
     RagIndexRequest,
     RagIndexResponse,
     RagSearchRequest,
     RagSearchResponse,
 )
+from app.services.rag_service import generate_rag_chat_response
 from app.services.search_service import search_similar_documents
 from app.services.vector_store_service import index_pdf_document
 
@@ -39,3 +42,16 @@ def search_documents(request: RagSearchRequest) -> RagSearchResponse:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     return RagSearchResponse(**result)
+
+
+@router.post("/chat", response_model=RagChatResponse)
+def chat_with_documents(request: RagChatRequest) -> RagChatResponse:
+    try:
+        result = generate_rag_chat_response(
+            question=request.question,
+            top_k=request.top_k,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    return RagChatResponse(**result)

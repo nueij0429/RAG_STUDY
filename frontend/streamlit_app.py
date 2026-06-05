@@ -258,3 +258,63 @@ if search_question and st.button("문서 검색"):
         )
     except Exception as exc:
         st.error(f"문서 검색 중 오류가 발생했습니다: {exc}")
+
+st.divider()
+st.subheader("RAG 질문 답변")
+
+chat_question = st.text_input(
+    "질문을 입력하세요",
+    placeholder="RAG란 무엇인가?",
+    key="chat_question",
+)
+chat_top_k = st.number_input(
+    "top_k",
+    min_value=1,
+    max_value=20,
+    value=3,
+    key="chat_top_k",
+)
+
+if chat_question and st.button("RAG 답변 생성"):
+    try:
+        with httpx.Client(timeout=120.0) as client:
+            response = client.post(
+                f"{API_BASE_URL}/rag/chat",
+                json={
+                    "question": chat_question,
+                    "top_k": int(chat_top_k),
+                },
+            )
+
+        if response.status_code == 200:
+            data = response.json()
+            st.success("RAG 답변 생성 완료")
+            st.write("**LLM 답변**")
+            st.write(data["answer"])
+
+            st.write("**참고 문서**")
+            for document in data["retrieved_documents"]:
+                metadata = document.get("metadata", {})
+                filename = metadata.get("filename", "-")
+                chunk_index = metadata.get("chunk_index", "-")
+                preview = document["content"][:200]
+                if len(document["content"]) > 200:
+                    preview += "..."
+
+                st.write(
+                    f"**Rank {document['rank']}** | "
+                    f"score: {document['score']:.4f} | "
+                    f"filename: {filename} | "
+                    f"chunk_index: {chunk_index}"
+                )
+                st.text(preview)
+        else:
+            detail = response.json().get("detail", response.text)
+            st.error(f"RAG 답변 생성 실패: {detail}")
+    except httpx.ConnectError:
+        st.error(
+            "FastAPI 서버에 연결할 수 없습니다. "
+            "backend에서 uvicorn 서버가 실행 중인지 확인해주세요."
+        )
+    except Exception as exc:
+        st.error(f"RAG 답변 생성 중 오류가 발생했습니다: {exc}")

@@ -33,3 +33,15 @@ class RagSearchResponse(BaseModel):
     total_results: int
     results: list[SearchResultItem]
     message: str | None = None
+
+
+class RagChatRequest(BaseModel):
+    question: str
+    top_k: int = 3
+
+
+class RagChatResponse(BaseModel):
+    question: str
+    answer: str
+    top_k: int
+    retrieved_documents: list[SearchResultItem]

@@ -55,6 +55,7 @@ streamlit run frontend/streamlit_app.py
 | PDF Chunk | POST http://127.0.0.1:8000/pdf/chunk |
 | RAG Index | POST http://127.0.0.1:8000/rag/index |
 | RAG Search | POST http://127.0.0.1:8000/rag/search |
+| RAG Chat | POST http://127.0.0.1:8000/rag/chat |
 | Swagger UI | http://127.0.0.1:8000/docs |
 
 ### Health Check
@@ -261,6 +262,63 @@ curl -X POST http://127.0.0.1:8000/rag/search -H "Content-Type: application/json
 {"detail": "question은 비어 있을 수 없습니다."}
 ```
 
+### RAG 질문 답변 API
+
+- **Method:** POST
+- **URL:** `/rag/chat`
+- **Content-Type:** `application/json`
+- **Body:**
+  - `question` (필수): 사용자 질문
+  - `top_k` (선택, 기본값 3): 참고할 유사 chunk 개수 (최대 20)
+- **처리 흐름:** 질문 입력 → Chroma 유사 문서 검색 → context 구성 → Groq LLM 답변 생성
+- **LLM:** LangChain `ChatGroq` (`langchain-groq`)
+- **환경변수:** 프로젝트 루트 `.env` 파일
+  - `GROQ_API_KEY` (필수, API 호출 시)
+  - `GROQ_MODEL` (선택, 기본값 `llama-3.1-8b-instant`)
+
+`.env` 예시:
+
+```env
+GROQ_API_KEY=your_groq_api_key
+GROQ_MODEL=llama-3.1-8b-instant
+```
+
+```bash
+curl -X POST http://127.0.0.1:8000/rag/chat -H "Content-Type: application/json" -d "{\"question\": \"RAG란 무엇인가?\", \"top_k\": 3}"
+```
+
+성공 응답 예시:
+
+```json
+{
+  "question": "RAG란 무엇인가?",
+  "answer": "RAG(Retrieval-Augmented Generation)는 검색으로 찾은 문서를 기반으로 LLM이 답변을 생성하는 방식입니다.",
+  "top_k": 3,
+  "retrieved_documents": [
+    {
+      "rank": 1,
+      "content": "RAG(Retrieval-Augmented Generation)는 ...",
+      "metadata": {
+        "filename": "sample.pdf",
+        "chunk_index": 3,
+        "chunk_length": 495
+      },
+      "score": 1.18
+    }
+  ]
+}
+```
+
+에러 응답 예시:
+
+```json
+{"detail": "GROQ_API_KEY가 설정되지 않았습니다. 프로젝트 루트의 .env 파일을 확인해주세요."}
+```
+
+```json
+{"detail": "인덱싱된 문서가 없습니다. 먼저 /rag/index API로 문서를 인덱싱해주세요."}
+```
+
 ### Streamlit PDF 업로드 테스트
 
 1. FastAPI 서버와 Streamlit을 각각 실행합니다.
@@ -299,3 +357,11 @@ curl -X POST http://127.0.0.1:8000/rag/search -H "Content-Type: application/json
 3. `top_k` 값을 설정합니다.
 4. **문서 검색** 버튼을 클릭합니다.
 5. 성공 시 rank, score, filename, chunk_index, content 일부가 화면에 표시됩니다.
+
+### Streamlit RAG 질문 답변 테스트
+
+1. `.env` 파일에 `GROQ_API_KEY`와 `GROQ_MODEL`을 설정합니다.
+2. PDF를 업로드하고 **문서 인덱싱**을 완료합니다.
+3. Streamlit 페이지의 **RAG 질문 답변** 영역에 질문을 입력합니다.
+4. **RAG 답변 생성** 버튼을 클릭합니다.
+5. 성공 시 LLM 답변과 참고 문서 목록이 함께 표시됩니다.
