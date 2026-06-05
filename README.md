@@ -53,6 +53,7 @@ streamlit run frontend/streamlit_app.py
 | PDF Upload | POST http://127.0.0.1:8000/pdf/upload |
 | PDF Extract | POST http://127.0.0.1:8000/pdf/extract |
 | PDF Chunk | POST http://127.0.0.1:8000/pdf/chunk |
+| RAG Index | POST http://127.0.0.1:8000/rag/index |
 | Swagger UI | http://127.0.0.1:8000/docs |
 
 ### Health Check
@@ -166,6 +167,43 @@ curl -X POST http://127.0.0.1:8000/pdf/chunk -H "Content-Type: application/json"
 {"detail": "chunk_overlap은 chunk_size보다 작아야 합니다."}
 ```
 
+### 문서 인덱싱 API
+
+- **Method:** POST
+- **URL:** `/rag/index`
+- **Content-Type:** `application/json`
+- **Body:**
+  - `filename` (필수): 업로드된 PDF 파일명
+  - `chunk_size` (선택, 기본값 500): chunk 크기
+  - `chunk_overlap` (선택, 기본값 100): chunk 겹침 크기
+- **처리 흐름:** PDF 텍스트 추출 → chunking → embedding 생성 → Chroma DB 저장
+- **Embedding 모델:** `all-MiniLM-L6-v2` (sentence-transformers)
+- **Chroma 저장 경로:** `backend/data/chroma_db/`
+- **Collection 이름:** `rag_documents`
+- **중복 처리:** 같은 PDF를 다시 인덱싱하면 해당 `filename`의 기존 chunk를 먼저 삭제한 뒤, `{filename}::{chunk_index}` id로 새로 저장합니다.
+
+```bash
+curl -X POST http://127.0.0.1:8000/rag/index -H "Content-Type: application/json" -d "{\"filename\": \"sample.pdf\", \"chunk_size\": 500, \"chunk_overlap\": 100}"
+```
+
+성공 응답 예시:
+
+```json
+{
+  "filename": "sample.pdf",
+  "total_chunks": 12,
+  "collection_name": "rag_documents",
+  "persist_directory": "C:\\study\\backend\\data\\chroma_db",
+  "message": "문서 인덱싱이 완료되었습니다."
+}
+```
+
+에러 응답 예시:
+
+```json
+{"detail": "PDF 파일을 찾을 수 없습니다: sample.pdf"}
+```
+
 ### Streamlit PDF 업로드 테스트
 
 1. FastAPI 서버와 Streamlit을 각각 실행합니다.
@@ -187,3 +225,12 @@ curl -X POST http://127.0.0.1:8000/pdf/chunk -H "Content-Type: application/json"
 3. `chunk_size`, `chunk_overlap` 값을 설정합니다.
 4. **Chunking 실행** 버튼을 클릭합니다.
 5. 성공 시 `total_chunks`와 각 chunk의 일부 내용이 화면에 표시됩니다.
+
+### Streamlit 문서 인덱싱 테스트
+
+1. 먼저 PDF를 업로드해 `backend/data/uploads/` 에 저장합니다.
+2. Streamlit 페이지의 **문서 인덱싱** 영역에 파일명을 입력합니다.
+3. `chunk_size`, `chunk_overlap` 값을 설정합니다.
+4. **문서 인덱싱 실행** 버튼을 클릭합니다.
+5. 성공 시 `total_chunks`, `collection_name`, 저장 경로, `message`가 화면에 표시됩니다.
+6. 첫 실행 시 embedding 모델 다운로드로 시간이 다소 걸릴 수 있습니다.

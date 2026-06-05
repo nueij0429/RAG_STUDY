@@ -142,3 +142,58 @@ if chunk_filename and st.button("Chunking 실행"):
         )
     except Exception as exc:
         st.error(f"Chunking 중 오류가 발생했습니다: {exc}")
+
+st.divider()
+st.subheader("문서 인덱싱")
+
+index_filename = st.text_input(
+    "인덱싱할 PDF 파일명",
+    placeholder="example.pdf",
+    key="index_filename",
+)
+
+index_col1, index_col2 = st.columns(2)
+with index_col1:
+    index_chunk_size = st.number_input(
+        "chunk_size",
+        min_value=1,
+        value=500,
+        key="index_chunk_size",
+    )
+with index_col2:
+    index_chunk_overlap = st.number_input(
+        "chunk_overlap",
+        min_value=0,
+        value=100,
+        key="index_chunk_overlap",
+    )
+
+if index_filename and st.button("문서 인덱싱 실행"):
+    try:
+        with httpx.Client(timeout=300.0) as client:
+            response = client.post(
+                f"{API_BASE_URL}/rag/index",
+                json={
+                    "filename": index_filename,
+                    "chunk_size": int(index_chunk_size),
+                    "chunk_overlap": int(index_chunk_overlap),
+                },
+            )
+
+        if response.status_code == 200:
+            data = response.json()
+            st.success(data.get("message", "문서 인덱싱에 성공했습니다."))
+            st.write(f"**파일명:** {data['filename']}")
+            st.write(f"**total_chunks:** {data['total_chunks']}")
+            st.write(f"**collection_name:** {data['collection_name']}")
+            st.write(f"**저장 경로:** {data['persist_directory']}")
+        else:
+            detail = response.json().get("detail", response.text)
+            st.error(f"문서 인덱싱 실패: {detail}")
+    except httpx.ConnectError:
+        st.error(
+            "FastAPI 서버에 연결할 수 없습니다. "
+            "backend에서 uvicorn 서버가 실행 중인지 확인해주세요."
+        )
+    except Exception as exc:
+        st.error(f"문서 인덱싱 중 오류가 발생했습니다: {exc}")

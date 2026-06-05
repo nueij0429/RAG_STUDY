@@ -2,6 +2,7 @@ from fastapi import FastAPI
 
 from app.api.health import router as health_router
 from app.api.pdf_router import router as pdf_router
+from app.api.rag_router import router as rag_router
 
 app = FastAPI(
     title="RAG Study API",
@@ -11,3 +12,4 @@ app = FastAPI(
 
 app.include_router(health_router)
 app.include_router(pdf_router)
+app.include_router(rag_router)
