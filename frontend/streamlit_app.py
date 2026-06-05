@@ -197,3 +197,64 @@ if index_filename and st.button("문서 인덱싱 실행"):
         )
     except Exception as exc:
         st.error(f"문서 인덱싱 중 오류가 발생했습니다: {exc}")
+
+st.divider()
+st.subheader("질문 기반 문서 검색")
+
+search_question = st.text_input(
+    "질문을 입력하세요",
+    placeholder="RAG란 무엇인가?",
+    key="search_question",
+)
+search_top_k = st.number_input(
+    "top_k",
+    min_value=1,
+    max_value=20,
+    value=3,
+    key="search_top_k",
+)
+
+if search_question and st.button("문서 검색"):
+    try:
+        with httpx.Client(timeout=60.0) as client:
+            response = client.post(
+                f"{API_BASE_URL}/rag/search",
+                json={
+                    "question": search_question,
+                    "top_k": int(search_top_k),
+                },
+            )
+
+        if response.status_code == 200:
+            data = response.json()
+
+            if data["total_results"] == 0:
+                st.warning(data.get("message", "검색 결과가 없습니다."))
+            else:
+                st.success(f"검색 완료 (total_results: {data['total_results']})")
+
+            for result in data["results"]:
+                metadata = result.get("metadata", {})
+                filename = metadata.get("filename", "-")
+                chunk_index = metadata.get("chunk_index", "-")
+                preview = result["content"][:200]
+                if len(result["content"]) > 200:
+                    preview += "..."
+
+                st.write(
+                    f"**Rank {result['rank']}** | "
+                    f"score: {result['score']:.4f} | "
+                    f"filename: {filename} | "
+                    f"chunk_index: {chunk_index}"
+                )
+                st.text(preview)
+        else:
+            detail = response.json().get("detail", response.text)
+            st.error(f"문서 검색 실패: {detail}")
+    except httpx.ConnectError:
+        st.error(
+            "FastAPI 서버에 연결할 수 없습니다. "
+            "backend에서 uvicorn 서버가 실행 중인지 확인해주세요."
+        )
+    except Exception as exc:
+        st.error(f"문서 검색 중 오류가 발생했습니다: {exc}")

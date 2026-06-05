@@ -1,6 +1,12 @@
 from fastapi import APIRouter, HTTPException
 
-from app.schemas.rag_schema import RagIndexRequest, RagIndexResponse
+from app.schemas.rag_schema import (
+    RagIndexRequest,
+    RagIndexResponse,
+    RagSearchRequest,
+    RagSearchResponse,
+)
+from app.services.search_service import search_similar_documents
 from app.services.vector_store_service import index_pdf_document
 
 router = APIRouter(prefix="/rag", tags=["rag"])
@@ -20,3 +26,16 @@ def index_document(request: RagIndexRequest) -> RagIndexResponse:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     return RagIndexResponse(**result)
+
+
+@router.post("/search", response_model=RagSearchResponse)
+def search_documents(request: RagSearchRequest) -> RagSearchResponse:
+    try:
+        result = search_similar_documents(
+            question=request.question,
+            top_k=request.top_k,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    return RagSearchResponse(**result)

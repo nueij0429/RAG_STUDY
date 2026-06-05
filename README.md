@@ -54,6 +54,7 @@ streamlit run frontend/streamlit_app.py
 | PDF Extract | POST http://127.0.0.1:8000/pdf/extract |
 | PDF Chunk | POST http://127.0.0.1:8000/pdf/chunk |
 | RAG Index | POST http://127.0.0.1:8000/rag/index |
+| RAG Search | POST http://127.0.0.1:8000/rag/search |
 | Swagger UI | http://127.0.0.1:8000/docs |
 
 ### Health Check
@@ -204,6 +205,62 @@ curl -X POST http://127.0.0.1:8000/rag/index -H "Content-Type: application/json"
 {"detail": "PDF 파일을 찾을 수 없습니다: sample.pdf"}
 ```
 
+### 유사 문서 검색 API
+
+- **Method:** POST
+- **URL:** `/rag/search`
+- **Content-Type:** `application/json`
+- **Body:**
+  - `question` (필수): 검색 질문
+  - `top_k` (선택, 기본값 3): 반환할 유사 chunk 개수 (최대 20)
+- **검색 대상:** `rag_documents` collection에 저장된 chunk
+- **score:** Chroma `similarity_search_with_score` 결과값 (distance, 값이 작을수록 더 유사)
+
+```bash
+curl -X POST http://127.0.0.1:8000/rag/search -H "Content-Type: application/json" -d "{\"question\": \"RAG란 무엇인가?\", \"top_k\": 3}"
+```
+
+성공 응답 예시:
+
+```json
+{
+  "question": "RAG란 무엇인가?",
+  "top_k": 3,
+  "total_results": 3,
+  "results": [
+    {
+      "rank": 1,
+      "content": "RAG(Retrieval-Augmented Generation)는 ...",
+      "metadata": {
+        "filename": "sample.pdf",
+        "chunk_index": 3,
+        "chunk_length": 495
+      },
+      "score": 1.18
+    }
+  ],
+  "message": null
+}
+```
+
+검색 결과가 없을 때:
+
+```json
+{
+  "question": "질문 내용",
+  "top_k": 3,
+  "total_results": 0,
+  "results": [],
+  "message": "인덱싱된 문서가 없습니다. 먼저 /rag/index API로 문서를 인덱싱해주세요."
+}
+```
+
+에러 응답 예시:
+
+```json
+{"detail": "question은 비어 있을 수 없습니다."}
+```
+
 ### Streamlit PDF 업로드 테스트
 
 1. FastAPI 서버와 Streamlit을 각각 실행합니다.
@@ -234,3 +291,11 @@ curl -X POST http://127.0.0.1:8000/rag/index -H "Content-Type: application/json"
 4. **문서 인덱싱 실행** 버튼을 클릭합니다.
 5. 성공 시 `total_chunks`, `collection_name`, 저장 경로, `message`가 화면에 표시됩니다.
 6. 첫 실행 시 embedding 모델 다운로드로 시간이 다소 걸릴 수 있습니다.
+
+### Streamlit 질문 기반 문서 검색 테스트
+
+1. 먼저 PDF를 업로드하고 **문서 인덱싱**을 완료합니다.
+2. Streamlit 페이지의 **질문 기반 문서 검색** 영역에 질문을 입력합니다.
+3. `top_k` 값을 설정합니다.
+4. **문서 검색** 버튼을 클릭합니다.
+5. 성공 시 rank, score, filename, chunk_index, content 일부가 화면에 표시됩니다.
