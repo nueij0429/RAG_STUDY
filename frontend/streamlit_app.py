@@ -57,3 +57,35 @@ if uploaded_file is not None and st.button("PDF 업로드"):
         )
     except Exception as exc:
         st.error(f"업로드 중 오류가 발생했습니다: {exc}")
+
+st.divider()
+st.subheader("PDF 텍스트 추출")
+
+extract_filename = st.text_input(
+    "추출할 PDF 파일명",
+    placeholder="example.pdf",
+)
+
+if extract_filename and st.button("텍스트 추출"):
+    try:
+        with httpx.Client(timeout=30.0) as client:
+            response = client.post(
+                f"{API_BASE_URL}/pdf/extract",
+                json={"filename": extract_filename},
+            )
+
+        if response.status_code == 200:
+            data = response.json()
+            st.success(f"텍스트 추출 완료 (글자 수: {data['text_length']})")
+            st.write(f"**파일명:** {data['filename']}")
+            st.text_area("추출된 텍스트", value=data["extracted_text"], height=300)
+        else:
+            detail = response.json().get("detail", response.text)
+            st.error(f"텍스트 추출 실패: {detail}")
+    except httpx.ConnectError:
+        st.error(
+            "FastAPI 서버에 연결할 수 없습니다. "
+            "backend에서 uvicorn 서버가 실행 중인지 확인해주세요."
+        )
+    except Exception as exc:
+        st.error(f"텍스트 추출 중 오류가 발생했습니다: {exc}")

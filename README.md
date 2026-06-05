@@ -51,6 +51,7 @@ streamlit run frontend/streamlit_app.py
 |------|-----|
 | Health Check | http://127.0.0.1:8000/health |
 | PDF Upload | POST http://127.0.0.1:8000/pdf/upload |
+| PDF Extract | POST http://127.0.0.1:8000/pdf/extract |
 | Swagger UI | http://127.0.0.1:8000/docs |
 
 ### Health Check
@@ -93,9 +94,48 @@ PDF가 아닌 파일을 업로드하면 `400` 오류와 함께 아래 메시지�
 {"detail": "PDF 파일만 업로드할 수 있습니다."}
 ```
 
+### PDF 텍스트 추출 API
+
+- **Method:** POST
+- **URL:** `/pdf/extract`
+- **Content-Type:** `application/json`
+- **Body:** `{"filename": "sample.pdf"}`
+- **대상 경로:** `backend/data/uploads/` 에 저장된 PDF 파일
+
+```bash
+curl -X POST http://127.0.0.1:8000/pdf/extract -H "Content-Type: application/json" -d "{\"filename\": \"sample.pdf\"}"
+```
+
+성공 응답 예시:
+
+```json
+{
+  "filename": "sample.pdf",
+  "extracted_text": "추출된 PDF 텍스트...",
+  "text_length": 1234
+}
+```
+
+에러 응답 예시:
+
+```json
+{"detail": "PDF 파일을 찾을 수 없습니다: sample.pdf"}
+```
+
+```json
+{"detail": "PDF에서 텍스트를 추출할 수 없습니다."}
+```
+
 ### Streamlit PDF 업로드 테스트
 
 1. FastAPI 서버와 Streamlit을 각각 실행합니다.
-2. Streamlit 페이지(http://localhost:8501)에서 **PDF 파일을 선택**합니다.
+2. Streamlit 페이지(http://localhost:8501) 에서 **PDF 파일을 선택**합니다.
 3. **PDF 업로드** 버튼을 클릭합니다.
 4. 성공 시 저장된 파일명과 경로가 화면에 표시됩니다.
+
+### Streamlit PDF 텍스트 추출 테스트
+
+1. 먼저 PDF를 업로드해 `backend/data/uploads/` 에 저장합니다.
+2. Streamlit 페이지의 **PDF 텍스트 추출** 영역에 파일명을 입력합니다.
+3. **텍스트 추출** 버튼을 클릭합니다.
+4. 성공 시 추출된 텍스트와 글자 수가 화면에 표시됩니다.
