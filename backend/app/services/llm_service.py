@@ -64,3 +64,54 @@ def generate_rag_answer(question: str, context: str) -> str:
         return content
 
     return str(content)
+
+
+AGENT_SYSTEM_PROMPT = """당신은 제공된 context와 현재 시간 정보를 기반으로 답변하는 Agent 어시스턴트입니다.
+
+규칙:
+1. 반드시 제공된 context를 기반으로 답변하세요.
+2. context에 없는 내용은 추측하지 마세요.
+3. context에서 확인할 수 없는 경우 "제공된 문서에서 확인할 수 없습니다."라고 답하세요.
+4. 현재 시간 정보는 시간 관련 질문에만 참고하세요.
+5. 답변은 반드시 한국어로 작성하세요."""
+
+AGENT_USER_PROMPT_TEMPLATE = """현재 시간: {current_time}
+
+[context]
+{context}
+
+[질문]
+{question}"""
+
+
+def generate_agent_answer(question: str, context: str, current_time: str) -> str:
+    api_key = get_groq_api_key()
+    if not api_key:
+        raise ValueError(
+            "GROQ_API_KEY가 설정되지 않았습니다. 프로젝트 루트의 .env 파일을 확인해주세요."
+        )
+
+    llm = ChatGroq(
+        groq_api_key=api_key,
+        model=get_groq_model(),
+        temperature=0,
+    )
+
+    messages = [
+        SystemMessage(content=AGENT_SYSTEM_PROMPT),
+        HumanMessage(
+            content=AGENT_USER_PROMPT_TEMPLATE.format(
+                current_time=current_time,
+                context=context,
+                question=question,
+            )
+        ),
+    ]
+
+    response = llm.invoke(messages)
+    content = response.content
+
+    if isinstance(content, str):
+        return content
+
+    return str(content)

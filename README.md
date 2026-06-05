@@ -56,6 +56,7 @@ streamlit run frontend/streamlit_app.py
 | RAG Index | POST http://127.0.0.1:8000/rag/index |
 | RAG Search | POST http://127.0.0.1:8000/rag/search |
 | RAG Chat | POST http://127.0.0.1:8000/rag/chat |
+| Agent Chat | POST http://127.0.0.1:8000/agent/chat |
 | Swagger UI | http://127.0.0.1:8000/docs |
 
 ### Health Check
@@ -319,6 +320,56 @@ curl -X POST http://127.0.0.1:8000/rag/chat -H "Content-Type: application/json" 
 {"detail": "인덱싱된 문서가 없습니다. 먼저 /rag/index API로 문서를 인덱싱해주세요."}
 ```
 
+### LangGraph Agent API
+
+- **Method:** POST
+- **URL:** `/agent/chat`
+- **Content-Type:** `application/json`
+- **Body:**
+  - `question` (필수): 사용자 질문
+  - `top_k` (선택, 기본값 3): 문서 검색 Tool에서 참고할 chunk 개수 (최대 20)
+- **처리 흐름:**
+  1. 사용자 question 입력
+  2. 문서 검색 Tool 실행 (`document_search`)
+  3. 현재 시간 Tool 실행 (`current_time`)
+  4. 검색 결과와 현재 시간을 바탕으로 Groq LLM 답변 생성
+  5. JSON 변환 Tool 실행 (`json_formatter`)
+  6. 최종 결과 반환
+- **Tool 목록:**
+  - `document_search`: Chroma DB 유사 chunk 검색
+  - `current_time`: 현재 서버 시간 반환
+  - `json_formatter`: answer, used_tools, references JSON 구조화
+
+```bash
+curl -X POST http://127.0.0.1:8000/agent/chat -H "Content-Type: application/json" -d "{\"question\": \"RAG란 무엇인가?\", \"top_k\": 3}"
+```
+
+성공 응답 예시:
+
+```json
+{
+  "question": "RAG란 무엇인가?",
+  "top_k": 3,
+  "answer": "RAG(Retrieval-Augmented Generation)는 검색으로 찾은 문서를 기반으로 LLM이 답변을 생성하는 방식입니다.",
+  "used_tools": ["document_search", "current_time", "json_formatter"],
+  "references": [
+    {
+      "filename": "sample.pdf",
+      "chunk_index": 3,
+      "score": 1.18,
+      "content_preview": "RAG(Retrieval-Augmented Generation)는 ..."
+    }
+  ],
+  "current_time": "현재 시간은 2026-06-05 14:30:00 입니다."
+}
+```
+
+에러 응답 예시:
+
+```json
+{"detail": "GROQ_API_KEY가 설정되지 않았습니다. 프로젝트 루트의 .env 파일을 확인해주세요."}
+```
+
 ### Streamlit PDF 업로드 테스트
 
 1. FastAPI 서버와 Streamlit을 각각 실행합니다.
@@ -365,3 +416,11 @@ curl -X POST http://127.0.0.1:8000/rag/chat -H "Content-Type: application/json" 
 3. Streamlit 페이지의 **RAG 질문 답변** 영역에 질문을 입력합니다.
 4. **RAG 답변 생성** 버튼을 클릭합니다.
 5. 성공 시 LLM 답변과 참고 문서 목록이 함께 표시됩니다.
+
+### Streamlit LangGraph Agent 테스트
+
+1. `.env` 파일에 `GROQ_API_KEY`와 `GROQ_MODEL`을 설정합니다.
+2. PDF를 업로드하고 **문서 인덱싱**을 완료합니다.
+3. Streamlit 페이지의 **LangGraph Agent 테스트** 영역에 질문을 입력합니다.
+4. **Agent 실행** 버튼을 클릭합니다.
+5. 성공 시 Agent 최종 답변, 사용한 Tool 목록, 참고 문서 목록이 함께 표시됩니다.

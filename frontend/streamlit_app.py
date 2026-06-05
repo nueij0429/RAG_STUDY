@@ -318,3 +318,63 @@ if chat_question and st.button("RAG 답변 생성"):
         )
     except Exception as exc:
         st.error(f"RAG 답변 생성 중 오류가 발생했습니다: {exc}")
+
+st.divider()
+st.subheader("LangGraph Agent 테스트")
+
+agent_question = st.text_input(
+    "질문을 입력하세요",
+    placeholder="RAG란 무엇인가?",
+    key="agent_question",
+)
+agent_top_k = st.number_input(
+    "top_k",
+    min_value=1,
+    max_value=20,
+    value=3,
+    key="agent_top_k",
+)
+
+if agent_question and st.button("Agent 실행"):
+    try:
+        with httpx.Client(timeout=120.0) as client:
+            response = client.post(
+                f"{API_BASE_URL}/agent/chat",
+                json={
+                    "question": agent_question,
+                    "top_k": int(agent_top_k),
+                },
+            )
+
+        if response.status_code == 200:
+            data = response.json()
+            st.success("Agent 실행 완료")
+            st.write("**Agent 최종 답변**")
+            st.write(data["answer"])
+            st.write(f"**현재 시간:** {data['current_time']}")
+
+            st.write("**사용한 Tool 목록**")
+            for tool_name in data["used_tools"]:
+                st.write(f"- {tool_name}")
+
+            st.write("**참고 문서 목록**")
+            if not data["references"]:
+                st.info("참고 문서가 없습니다.")
+            else:
+                for reference in data["references"]:
+                    st.write(
+                        f"- filename: {reference.get('filename', '-')} | "
+                        f"chunk_index: {reference.get('chunk_index', '-')} | "
+                        f"score: {reference.get('score', '-')}"
+                    )
+                    st.text(reference.get("content_preview", ""))
+        else:
+            detail = response.json().get("detail", response.text)
+            st.error(f"Agent 실행 실패: {detail}")
+    except httpx.ConnectError:
+        st.error(
+            "FastAPI 서버에 연결할 수 없습니다. "
+            "backend에서 uvicorn 서버가 실행 중인지 확인해주세요."
+        )
+    except Exception as exc:
+        st.error(f"Agent 실행 중 오류가 발생했습니다: {exc}")
