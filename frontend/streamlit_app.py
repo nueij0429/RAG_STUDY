@@ -89,3 +89,56 @@ if extract_filename and st.button("텍스트 추출"):
         )
     except Exception as exc:
         st.error(f"텍스트 추출 중 오류가 발생했습니다: {exc}")
+
+st.divider()
+st.subheader("PDF 문서 Chunking")
+
+chunk_filename = st.text_input(
+    "Chunking할 PDF 파일명",
+    placeholder="example.pdf",
+    key="chunk_filename",
+)
+
+col1, col2 = st.columns(2)
+with col1:
+    chunk_size = st.number_input("chunk_size", min_value=1, value=500)
+with col2:
+    chunk_overlap = st.number_input("chunk_overlap", min_value=0, value=100)
+
+if chunk_filename and st.button("Chunking 실행"):
+    try:
+        with httpx.Client(timeout=30.0) as client:
+            response = client.post(
+                f"{API_BASE_URL}/pdf/chunk",
+                json={
+                    "filename": chunk_filename,
+                    "chunk_size": int(chunk_size),
+                    "chunk_overlap": int(chunk_overlap),
+                },
+            )
+
+        if response.status_code == 200:
+            data = response.json()
+            st.success(
+                f"Chunking 완료 (total_chunks: {data['total_chunks']}, "
+                f"chunk_size: {data['chunk_size']}, "
+                f"chunk_overlap: {data['chunk_overlap']})"
+            )
+            st.write(f"**파일명:** {data['filename']}")
+
+            for chunk in data["chunks"]:
+                preview = chunk["content"][:200]
+                if len(chunk["content"]) > 200:
+                    preview += "..."
+                st.write(f"**Chunk {chunk['index']}** (length: {chunk['length']})")
+                st.text(preview)
+        else:
+            detail = response.json().get("detail", response.text)
+            st.error(f"Chunking 실패: {detail}")
+    except httpx.ConnectError:
+        st.error(
+            "FastAPI 서버에 연결할 수 없습니다. "
+            "backend에서 uvicorn 서버가 실행 중인지 확인해주세요."
+        )
+    except Exception as exc:
+        st.error(f"Chunking 중 오류가 발생했습니다: {exc}")

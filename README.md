@@ -52,6 +52,7 @@ streamlit run frontend/streamlit_app.py
 | Health Check | http://127.0.0.1:8000/health |
 | PDF Upload | POST http://127.0.0.1:8000/pdf/upload |
 | PDF Extract | POST http://127.0.0.1:8000/pdf/extract |
+| PDF Chunk | POST http://127.0.0.1:8000/pdf/chunk |
 | Swagger UI | http://127.0.0.1:8000/docs |
 
 ### Health Check
@@ -126,6 +127,45 @@ curl -X POST http://127.0.0.1:8000/pdf/extract -H "Content-Type: application/jso
 {"detail": "PDF에서 텍스트를 추출할 수 없습니다."}
 ```
 
+### PDF Chunking API
+
+- **Method:** POST
+- **URL:** `/pdf/chunk`
+- **Content-Type:** `application/json`
+- **Body:**
+  - `filename` (필수): 업로드된 PDF 파일명
+  - `chunk_size` (선택, 기본값 500): chunk 크기
+  - `chunk_overlap` (선택, 기본값 100): chunk 겹침 크기
+- **조건:** `chunk_overlap` 은 `chunk_size` 보다 작아야 합니다.
+
+```bash
+curl -X POST http://127.0.0.1:8000/pdf/chunk -H "Content-Type: application/json" -d "{\"filename\": \"sample.pdf\", \"chunk_size\": 500, \"chunk_overlap\": 100}"
+```
+
+성공 응답 예시:
+
+```json
+{
+  "filename": "sample.pdf",
+  "chunk_size": 500,
+  "chunk_overlap": 100,
+  "total_chunks": 12,
+  "chunks": [
+    {
+      "index": 0,
+      "content": "첫 번째 chunk 내용...",
+      "length": 480
+    }
+  ]
+}
+```
+
+에러 응답 예시:
+
+```json
+{"detail": "chunk_overlap은 chunk_size보다 작아야 합니다."}
+```
+
 ### Streamlit PDF 업로드 테스트
 
 1. FastAPI 서버와 Streamlit을 각각 실행합니다.
@@ -139,3 +179,11 @@ curl -X POST http://127.0.0.1:8000/pdf/extract -H "Content-Type: application/jso
 2. Streamlit 페이지의 **PDF 텍스트 추출** 영역에 파일명을 입력합니다.
 3. **텍스트 추출** 버튼을 클릭합니다.
 4. 성공 시 추출된 텍스트와 글자 수가 화면에 표시됩니다.
+
+### Streamlit PDF Chunking 테스트
+
+1. 먼저 PDF를 업로드해 `backend/data/uploads/` 에 저장합니다.
+2. Streamlit 페이지의 **PDF 문서 Chunking** 영역에 파일명을 입력합니다.
+3. `chunk_size`, `chunk_overlap` 값을 설정합니다.
+4. **Chunking 실행** 버튼을 클릭합니다.
+5. 성공 시 `total_chunks`와 각 chunk의 일부 내용이 화면에 표시됩니다.
