@@ -20,13 +20,28 @@ venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-## 서버 실행
+## FastAPI 서버 실행
 
 ```bash
 # backend 디렉터리에서 실행
 cd backend
 uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 ```
+
+## Streamlit 실행
+
+FastAPI 서버를 먼저 실행한 뒤, 별도 터미널에서 Streamlit을 실행합니다.
+
+```bash
+# 프로젝트 루트에서 실행
+streamlit run frontend/streamlit_app.py
+```
+
+브라우저에서 Streamlit 페이지가 열리면 **FastAPI 서버 상태 확인** 버튼을 눌러 `/health` API 응답을 확인합니다.
+
+| 항목 | 값 |
+|------|-----|
+| Streamlit 페이지 | http://localhost:8501 |
 
 ## API 테스트
 
